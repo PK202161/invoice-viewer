@@ -7,7 +7,13 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json({ limit: '10mb' })); // รองรับ HTML ขนาดใหญ่
-app.use('/invoice', express.static(path.join(__dirname, 'html')));
+app.use(express.urlencoded({ extended: true, limit: '10mb' })); // รองรับ form data
+// Static files พร้อม URL decoding สำหรับภาษาไทย
+app.use('/invoice', (req, res, next) => {
+  // Decode URL เพื่อจัดการภาษาไทย
+  req.url = decodeURIComponent(req.url);
+  next();
+}, express.static(path.join(__dirname, 'html')));
 
 // สร้างโฟลเดอร์ html หากไม่มี
 const htmlDir = path.join(__dirname, 'html');
@@ -27,8 +33,11 @@ app.post('/upload', (req, res) => {
       });
     }
 
-    // ทำความสะอาดชื่อไฟล์เพื่อความปลอดภัย
-    const cleanFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    // ใช้ชื่อไฟล์ตามที่ส่งมา รองรับภาษาไทย
+    const cleanFilename = filename
+      .replace(/[<>:"/\\|?*]/g, '')  // ลบเฉพาะอักขระที่ระบบไฟล์ไม่อนุญาต
+      .trim();
+    
     const filePath = path.join(htmlDir, cleanFilename);
     
     // บันทึกไฟล์
@@ -42,10 +51,15 @@ app.post('/upload', (req, res) => {
       }
       
       console.log(`File saved: ${cleanFilename}`);
+      
+      // สร้าง URL ที่ encode ภาษาไทยเพื่อใช้ใน browser
+      const encodedFilename = encodeURIComponent(cleanFilename);
+      const fileUrl = `${req.protocol}://${req.get('host')}/invoice/${encodedFilename}`;
+      
       res.json({ 
         message: 'File saved successfully',
         filename: cleanFilename,
-        url: `${req.protocol}://${req.get('host')}/invoice/${cleanFilename}`
+        url: fileUrl
       });
     });
     
