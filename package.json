@@ -4,7 +4,7 @@
   "scripts": {
     "start": "node server.js"
   },
-  engines: {
+  "engines": {
     "node": "18.x"
   }
 }
